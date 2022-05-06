@@ -32,7 +32,6 @@ def kmeans(
         tol=1e-4,
         tqdm_flag=True,
         iter_limit=0,
-        device=torch.device('cpu'),
         gamma_for_soft_dtw=0.001,
         seed=None,
 ):
@@ -43,15 +42,13 @@ def kmeans(
     :param distance: (str) distance [options: 'euclidean', 'cosine'] [default: 'euclidean']
     :param seed: (int) seed for kmeans
     :param tol: (float) threshold [default: 0.0001]
-    :param device: (torch.device) device [default: cpu]
     :param tqdm_flag: Allows to turn logs on and off
     :param iter_limit: hard limit for max number of iterations
     :param gamma_for_soft_dtw: approaches to (hard) DTW as gamma -> 0
     :return: (torch.tensor, torch.tensor) cluster ids, cluster centers
     """
-    if tqdm_flag:
-        print(f'running k-means on {device}..')
 
+    device = X.device
     if distance == 'euclidean':
         pairwise_distance_function = partial(pairwise_distance, device=device, tqdm_flag=tqdm_flag)
     elif distance == 'cosine':
@@ -65,8 +62,6 @@ def kmeans(
     # convert to float
     X = X.float()
 
-    # transfer to device
-    X = X.to(device)
 
     # initialize
     if type(cluster_centers) == list:  # ToDo: make this less annoyingly weird
@@ -124,14 +119,13 @@ def kmeans(
         if iter_limit != 0 and iteration >= iter_limit:
             break
 
-    return choice_cluster.cpu(), initial_state.cpu()
+    return choice_cluster, initial_state
 
 
 def kmeans_predict(
         X,
         cluster_centers,
         distance='euclidean',
-        device=torch.device('cpu'),
         gamma_for_soft_dtw=0.001,
         tqdm_flag=True
 ):
@@ -144,8 +138,7 @@ def kmeans_predict(
     :param gamma_for_soft_dtw: approaches to (hard) DTW as gamma -> 0
     :return: (torch.tensor) cluster ids
     """
-    if tqdm_flag:
-        print(f'predicting on {device}..')
+    device = X.device
 
     if distance == 'euclidean':
         pairwise_distance_function = partial(pairwise_distance, device=device, tqdm_flag=tqdm_flag)
@@ -160,13 +153,11 @@ def kmeans_predict(
     # convert to float
     X = X.float()
 
-    # transfer to device
-    X = X.to(device)
 
     dis = pairwise_distance_function(X, cluster_centers)
     choice_cluster = torch.argmin(dis, dim=1)
 
-    return choice_cluster.cpu()
+    return choice_cluster
 
 
 def pairwise_distance(data1, data2, device=torch.device('cpu'), tqdm_flag=True):
